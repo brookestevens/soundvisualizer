@@ -1,0 +1,6 @@
+#Dont track these folders
+#Dont track the api keys file either
+
+app/node_modules/
+app/apiKeys.js
+app/.DS_Store
