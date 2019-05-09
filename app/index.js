@@ -18,7 +18,7 @@ var connections = new Array;
 
 var app = express();
 const wss = new WebSocketServer({port: 8081}); // the webSocket server
-var re = /usbmodem/; //only allow the Arduino port
+var re = /usbmodem/; //testing for the Arduino port
 var myPort = new SerialPort(process.argv[2], 9600); //new serialport to connect to Arduino IDE
 var parser = new SerialPort.parsers.Readline();
 
@@ -38,8 +38,7 @@ else if(re.test(process.argv[2])){
   console.log("About to open port: ", arduinoPort);
 }
 else{
-  //bad input
-  console.log("error");
+  console.log("No valid serial ports available...exiting");
   process.exit(1);
 }
 
@@ -47,22 +46,6 @@ else{
 app.use('/public', express.static(__dirname + '/public'));
 app.get('/', (req,res) => {
   res.sendFile(path.join(__dirname,'public/sketch.html'));
-});
-
-//open the web socket for the Node app to connect to
-wss.on('connection', function(ws){
-  console.log("Web socket server running on port 8081!");
-  connections.push(ws);
-  ws.on('message', sendToSerial); //connect the WS to serialPort
-  ws.on('close', function(ws){
-    console.log("Closing Port");
-    connections.splice(connections.indexOf(ws), 1); //remove from array
-  });
-  ws.on('error', function(err){
-    console.log("Error connecting: ", err);
-  });
-  ws.send("hello from the server!");
-  console.table(connections);
 });
 
 //methods to format sending data to the p5 serialport
@@ -77,6 +60,22 @@ var sendit = function(toSend) {
   }
 };
 
+//open the web socket for the Node app to connect to
+wss.on('connection', function(ws){
+  console.log("Adding a Client to the Socket");
+  connections.push(ws);
+  ws.on('message', sendToSerial); //connect the WS to serialPort
+  ws.on('close', function(ws){
+    console.log("Closing Port");
+    connections.splice(connections.indexOf(ws), 1); //remove from array
+  });
+  ws.on('error', function(err){
+    console.log("Error connecting: ", err);
+    process.exit(1);
+  });
+  sendit({method: 'data', data: "hello from the server! "});
+});
+
 //open the serial port from the Arduino 
 myPort.on('open', () => console.log("Opening the serial port to the arduino! Data rate: ", myPort.baudRate) );
 myPort.on('data', readSerialData); //reading from the Arduino
@@ -86,9 +85,14 @@ myPort.on('error', error => {
 });
 myPort.pipe(parser);
 
+
+//send to the arduino -- get the data from P5
 function sendToSerial(data){
-  console.log("sending to serial: ", data);
-  //myPort.write(data); //sending data to the arduino
+  var objFromBuffer = JSON.parse(data);
+  console.log("sending to serial: ", objFromBuffer.data);
+  if(objFromBuffer.data !== undefined){
+    myPort.write(objFromBuffer.data); 
+  }
 }
 
 //buffer only holds one byte at a time - send the data to p5 and all other clients

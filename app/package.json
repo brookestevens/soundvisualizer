@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "ports": "node index.js -l"
+    "start": "nodemon index.js /dev/tty.usbmodem14201"
   },
   "repository": {
     "type": "git",
